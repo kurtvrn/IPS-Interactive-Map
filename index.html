@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indigenous Peoples Interactive Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        #sidebar {
+            width: 300px;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+        }
+        .control-panel {
+            background: white;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        h2 {
+            font-size: 1.2em;
+            margin-top: 0;
+        }
+        .group-details {
+            display: none;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            margin-top: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .group-details.active {
+            display: block;
+        }
+        .challenge-tag {
+            display: inline-block;
+            background-color: #e0e0e0;
+            padding: 3px 8px;
+            border-radius: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+        }
+        .challenge-tag.land-rights {
+            background-color: #ffcdd2;
+        }
+        .challenge-tag.education {
+            background-color: #c8e6c9;
+        }
+        .challenge-tag.healthcare {
+            background-color: #bbdefb;
+        }
+        .challenge-tag.discrimination {
+            background-color: #f8bbd0;
+        }
+        .challenge-tag.cultural-preservation {
+            background-color: #ffe0b2;
+        }
+        .challenge-tag.environmental {
+            background-color: #b2dfdb;
+        }
+        .toggle-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .filter-container {
+            margin-bottom: 15px;
+        }
+        .filter-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .filter-checkbox {
+            margin-right: 3px;
+        }
+        .leaflet-popup-content {
+            max-width: 250px;
+        }
+        .country-select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .group-image {
+            width: 100%;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            max-height: 200px;
+            object-fit: cover;
+        }
+        .image-caption {
+            font-size: 0.8em;
+            font-style: italic;
+            margin-top: -5px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map"></div>
+        <div id="sidebar">
+            <div class="control-panel">
+                <h1>Indigenous Peoples Map</h1>
+                <select id="country-select" class="country-select">
+                    <option value="philippines">Philippines</option>
+                    <option value="indonesia">Indonesia</option>
+                    <option value="malaysia">Malaysia</option>
+                </select>
+                <div class="filter-container">
+                    <div class="filter-title">Filter by Challenges:</div>
+                    <div class="filter-options">
+                        <label><input type="checkbox" class="filter-checkbox" value="land-rights" checked> Land Rights</label>
+                        <label><input type="checkbox" class="filter-checkbox" value="education" checked> Education</label>
+                        <label><input type="checkbox" class="filter-checkbox" value="healthcare" checked> Healthcare</label>
+                        <label><input type="checkbox" class="filter-checkbox" value="discrimination" checked> Discrimination</label>
+                        <label><input type="checkbox" class="filter-checkbox" value="cultural-preservation" checked> Cultural Preservation</label>
+                        <label><input type="checkbox" class="filter-checkbox" value="environmental" checked> Environmental</label>
+                    </div>
+                </div>
+                <button id="toggle-all" class="toggle-button">Show All Groups</button>
+            </div>
+            
+            <div id="group-info">
+                <h2>Select a group on the map</h2>
+                <p>Click on any marker to view detailed information and images of the indigenous group.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map centered on Philippines
+        const map = L.map('map').setView([12.8797, 121.7740], 6);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Define indigenous groups data with images
+        const countries = {
+            philippines: {
+                center: [12.8797, 121.7740],
+                zoom: 6,
+                groups: [
+                    {
+                        id: 'ph1',
+                        name: 'Aeta',
+                        population: 'Approx. 20,000-30,000',
+                        location: [15.3203, 120.3112],
+                        region: 'Central Luzon, Philippines',
+                        challenges: ['land-rights', 'discrimination', 'education'],
+                        description: 'The Aeta are an indigenous people who live in scattered, isolated mountainous parts of Luzon, Philippines. They are thought to be among the earliest inhabitants of the Philippines, preceding the Austronesian migrations.',
+                        challenges_details: 'The Aeta face significant challenges including displacement due to volcanic eruptions, mining operations, and logging. Many communities lack access to education and face discrimination when integrating with lowland communities.',
+                        image: 'https://a4.pbase.com/o9/55/531755/1/111591453.U8KNvfG5.200903141413047iso400f5.024mm640Edit.jpg',
+                        image_caption: 'Aeta people from Central Luzon, Philippines'
+                    },
+                    {
+                        id: 'ph2',
+                        name: 'Igorot',
+                        population: 'Approx. 1.5 million',
+                        location: [16.9547, 121.1301],
+                        region: 'Cordillera Administrative Region, Northern Luzon',
+                        challenges: ['cultural-preservation', 'land-rights', 'environmental'],
+                        description: 'The Igorot are several ethnic groups in the mountains of Northern Luzon. They are known for their rich culture, intricate wood carvings, and the famous Banaue Rice Terraces.',
+                        challenges_details: 'The Igorot peoples struggle with maintaining their cultural identity in the face of modernization and tourism. Large-scale mining operations threaten their ancestral lands and the environmental stability of the Cordillera region.',
+                        image: 'https://www.nuptials.ph/wp-content/uploads/2023/10/igorot1.jpg',
+                        image_caption: 'Igorot people in traditional attire from the Cordillera region'
+                    },
+                    {
+                        id: 'ph3',
+                        name: 'T\'boli',
+                        population: 'Approx. 150,000',
+                        location: [6.3433, 124.7771],
+                        region: 'South Cotabato, Mindanao',
+                        challenges: ['cultural-preservation', 'education', 'healthcare'],
+                        description: 'The T\'boli are an indigenous people from South Cotabato known for their intricate brass work, beadwork, and t\'nalak cloth weaving, which features sacred patterns passed down in dreams.',
+                        challenges_details: 'The T\'boli communities face challenges in preserving their cultural heritage with younger generations increasingly moving to urban areas. Access to healthcare and quality education remains limited in remote areas.',
+                        image: 'https://fameplus.com/uploads/userfiles/AC_Tiboli%20Weavers%20Img2.jpg',
+                        image_caption: 'T\'boli woman wearing traditional clothing and accessories'
+                    },
+                    {
+                        id: 'ph4',
+                        name: 'Badjao',
+                        population: 'Approx. 40,000-50,000',
+                        location: [6.0536, 121.0097],
+                        region: 'Sulu Archipelago, Southern Philippines',
+                        challenges: ['discrimination', 'healthcare', 'education', 'land-rights'],
+                        description: 'The Badjao, also known as "Sea Gypsies," are maritime people who traditionally lived their entire lives at sea, coming ashore only during storms or to bury their dead.',
+                        challenges_details: 'Many Badjao have been forced to leave their traditional sea-dwelling lifestyle due to maritime conflicts and overfishing. They face extreme discrimination and poverty in urban areas, with very limited access to social services, education, and healthcare.',
+                        image: 'https://i.pinimg.com/736x/e2/2d/60/e22d60419672d3afcb7dca2ec9c670dc.jpg',
+                        image_caption: 'Badjao people in their traditional boat dwelling'
+                    },
+                    {
+                        id: 'ph5',
+                        name: 'Mangyan',
+                        population: 'Approx. 100,000',
+                        location: [13.0565, 121.4084],
+                        region: 'Mindoro Island',
+                        challenges: ['land-rights', 'healthcare', 'discrimination'],
+                        description: 'The Mangyan is a collective name for the eight indigenous groups living in Mindoro. They are known for their peaceful nature and their unique writing system called Surat Mangyan.',
+                        challenges_details: 'Mangyan communities face ongoing land disputes with settlers and corporations developing land for tourism. Many communities lack basic healthcare services, and children have limited access to education that respects their cultural background.',
+                        image: 'https://i.pinimg.com/originals/ff/6f/a4/ff6fa4bf1a196e165f1ec90ead4b5e0c.jpg',
+                        image_caption: 'Mangyan community members from Mindoro Island'
+                    },
+                    {
+                        id: 'ph6',
+                        name: 'Lumad',
+                        population: 'Approx. 13-17 million (collective)',
+                        location: [8.1921, 124.5096],
+                        region: 'Mindanao',
+                        challenges: ['land-rights', 'environmental', 'discrimination', 'education'],
+                        description: 'Lumad is a collective term for non-Muslim indigenous peoples of Mindanao, comprising over 18 ethnolinguistic groups including the Manobo, B\'laan, and Subanen peoples.',
+                        challenges_details: 'The Lumad peoples have been caught in the crossfire of armed conflicts in Mindanao for decades. They face major challenges from mining operations and plantations on their ancestral lands. Lumad schools have been subjected to militarization and closure due to unfounded allegations of being rebel training centers.',
+                        image: 'https://www.rappler.com/tachyon/r3-assets/7FC69E9DFDBB45C1A184E12502954037/img/0BAF80D08B7547709DDC20DCAB70EF6A/TribalGames-Pana-1.jpg',
+                        image_caption: 'Lumad community members in a traditional gathering'
+                    },
+                    {
+                        id: 'ph7',
+                        name: 'Tagbanwa',
+                        population: 'Approx. 10,000-15,000',
+                        location: [10.1461, 119.2517],
+                        region: 'Palawan',
+                        challenges: ['land-rights', 'environmental', 'cultural-preservation'],
+                        description: 'The Tagbanwa are one of the oldest ethnic groups in the Philippines, living primarily in central and northern Palawan. They are known for their sophisticated agricultural and fishing practices.',
+                        challenges_details: 'Tourism development in Palawan has put pressure on Tagbanwa ancestral lands, particularly in coastal areas. Environmental degradation from mining and illegal logging threatens their traditional way of life and resource management systems.',
+                        image: 'https://1.bp.blogspot.com/-GCrBtdotN_E/XHyNimLi9CI/AAAAAAAABkI/9zNzKTZhoQwKAcXYb5FsCxPQN_MZQGLnQCLcBGAs/s1600/Masikampo1.jpg',
+                        image_caption: 'Tagbanwa people performing traditional rituals in Palawan'
+                    }
+                ]
+            },
+            indonesia: {
+                center: [-2.4833, 117.8902],
+                zoom: 5,
+                groups: [
+                    {
+                        id: 'id1',
+                        name: 'Dayak',
+                        population: 'Approx. 3-4 million',
+                        location: [0.0137, 113.9213],
+                        region: 'Kalimantan (Borneo)',
+                        challenges: ['land-rights', 'environmental', 'cultural-preservation'],
+                        description: 'The Dayak are a diverse indigenous group native to the interior of Borneo. They comprise over 200 subgroups, each with their own dialect, customs, and traditions.',
+                        challenges_details: 'The Dayak face severe threats from deforestation, palm oil plantations, and mining operations that have destroyed vast areas of their ancestral forests. These environmental changes have dramatically impacted their traditional way of life and forest-dependent subsistence.',
+                        image: '/api/placeholder/400/300',
+                        image_caption: 'Dayak people in traditional ceremonial dress'
+                    },
+                    {
+                        id: 'id2',
+                        name: 'Papuan Peoples',
+                        population: 'Approx. 2-3 million',
+                        location: [-4.2699, 138.0804],
+                        region: 'Papua and West Papua',
+                        challenges: ['discrimination', 'land-rights', 'healthcare', 'education'],
+                        description: 'The indigenous peoples of Papua (formerly Irian Jaya) include hundreds of distinct tribal groups with different languages and cultures across the western half of New Guinea.',
+                        challenges_details: 'Papuan indigenous peoples face systemic discrimination, human rights abuses, and marginalization. Development projects, mining operations, and transmigration programs have led to displacement and environmental degradation. Access to healthcare and education is severely limited in many areas.',
+                        image: '/api/placeholder/400/300',
+                        image_caption: 'Indigenous people from Papua region'
+                    },
+                    {
+                        id: 'id3',
+                        name: 'Mentawai',
+                        population: 'Approx. 60,000-70,000',
+                        location: [-1.4259, 98.9714],
+                        region: 'Mentawai Islands, West Sumatra',
+                        challenges: ['cultural-preservation', 'education', 'healthcare'],
+                        description: 'The Mentawai people live on the Mentawai Islands off the western coast of Sumatra. They are known for their traditional tattoos, shamanic rituals, and distinct animistic beliefs.',
+                        challenges_details: 'Religious conversion efforts and modernization have threatened traditional Mentawai spiritual practices and lifestyle. Their remote island location creates challenges for accessing adequate healthcare and educational services.',
+                        image: '/api/placeholder/400/300',
+                        image_caption: 'Mentawai people with traditional tattoos and attire'
+                    }
+                ]
+            },
+            malaysia: {
+                center: [4.2105, 108.9758],
+                zoom: 6,
+                groups: [
+                    {
+                        id: 'my1',
+                        name: 'Orang Asli',
+                        population: 'Approx. 150,000-200,000',
+                        location: [4.5921, 101.3431],
+                        region: 'Peninsular Malaysia',
+                        challenges: ['land-rights', 'discrimination', 'education', 'healthcare'],
+                        description: 'The Orang Asli are the indigenous peoples of Peninsular Malaysia, comprising 18 subgroups within three main ethnolinguistic categories: Semang (Negrito), Senoi, and Proto-Malay.',
+                        challenges_details: 'The Orang Asli face significant challenges securing legal recognition of their customary land rights. Logging, plantations, and development projects continue to encroach on their territories. Many communities have limited access to healthcare and culturally appropriate education.',
+                        image: '/api/placeholder/400/300',
+                        image_caption: 'Orang Asli community in their traditional village setting'
+                    },
+                    {
+                        id: 'my2',
+                        name: 'Penan',
+                        population: 'Approx. 10,000-16,000',
+                        location: [3.5855, 115.1733],
+                        region: 'Sarawak, Borneo',
+                        challenges: ['land-rights', 'environmental', 'education'],
+                        description: 'The Penan are an indigenous people of the forest of Borneo. Traditionally nomadic hunter-gatherers, many Penan have been settled in permanent communities in recent decades.',
+                        challenges_details: 'The Penan have been fighting against intensive logging and palm oil plantations that have devastated their traditional hunting grounds and forests. Their nomadic lifestyle and forest knowledge are increasingly threatened as available forest diminishes.',
+                        image: '/api/placeholder/400/300',
+                        image_caption: 'Penan people using traditional hunting techniques in Sarawak'
+                    },
+                    {
+                        id: 'my3',
+                        name: 'Kadazan-Dusun',
+                        population: 'Approx. 750,000-850,000',
+                        location: [5.9804, 116.0735],
+                        region: 'Sabah, Borneo',
+                        challenges: ['cultural-preservation', 'land-rights', 'environmental'],
+                        description: 'The Kadazan-Dusun are the largest indigenous group in Sabah, Malaysian Borneo. They are traditionally agricultural people known for their rice cultivation and harvest festivals.',
+                        challenges_details: 'While more integrated into Malaysian society than some other indigenous groups, the Kadazan-Dusun face challenges in preserving their language and cultural practices. Development projects and palm oil plantations have impacted traditional lands and agricultural practices.',
+                        image: '/api/placeholder/400/300',
+                        image_caption: 'Kadazan-Dusun people during a traditional harvest festival'
+                    }
+                ]
+            }
+        };
+        
+        let currentCountry = 'philippines';
+        let markersLayer = L.layerGroup().addTo(map);
+        let activeFilters = ['land-rights', 'education', 'healthcare', 'discrimination', 'cultural-preservation', 'environmental'];
+        
+        // Function to update map based on selected country and filters
+        function updateMap() {
+            // Clear existing markers
+            markersLayer.clearLayers();
+            
+            // Set view to selected country
+            const countryData = countries[currentCountry];
+            map.setView(countryData.center, countryData.zoom);
+            
+            // Add filtered markers
+            countryData.groups.forEach(group => {
+                // Check if group should be displayed based on filters
+                const hasMatchingChallenge = group.challenges.some(challenge => activeFilters.includes(challenge));
+                
+                if (hasMatchingChallenge) {
+                    const marker = L.marker(group.location)
+                        .bindPopup(`<strong>${group.name}</strong><br>Click for more information`)
+                        .on('click', () => showGroupDetails(group));
+                    
+                    markersLayer.addLayer(marker);
+                }
+            });
+        }
+        
+        // Function to display group details in sidebar
+        function showGroupDetails(group) {
+            const challengeTags = group.challenges.map(challenge => {
+                const readableChallenge = challenge.split('-')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                return `<span class="challenge-tag ${challenge}">${readableChallenge}</span>`;
+            }).join('');
+            
+            document.getElementById('group-info').innerHTML = `
+                <h2>${group.name}</h2>
+                <img src="${group.image}" alt="${group.name} people" class="group-image">
+                <p class="image-caption">${group.image_caption}</p>
+                <p><strong>Population:</strong> ${group.population}</p>
+                <p><strong>Region:</strong> ${group.region}</p>
+                <p>${group.description}</p>
+                <div class="challenges-section">
+                    <h3>Challenges:</h3>
+                    <div>${challengeTags}</div>
+                    <p>${group.challenges_details}</p>
+                </div>
+            `;
+        }
+        
+        // Initialize the map with default country (Philippines)
+        updateMap();
+        
+        // Set up event listeners
+        document.getElementById('country-select').addEventListener('change', function() {
+            currentCountry = this.value;
+            updateMap();
+        });
+        
+        // Filter checkboxes
+        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    activeFilters.push(this.value);
+                } else {
+                    activeFilters = activeFilters.filter(filter => filter !== this.value);
+                }
+                updateMap();
+            });
+        });
+        
+        // Toggle all groups button
+        document.getElementById('toggle-all').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.filter-checkbox');
+            
+            // Check if all are currently checked
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            // Toggle accordingly
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !allChecked;
+            });
+            
+            // Update filters array
+            if (allChecked) {
+                activeFilters = [];
+                this.textContent = "Show All Groups";
+            } else {
+                activeFilters = Array.from(checkboxes).map(cb => cb.value);
+                this.textContent = "Hide All Groups";
+            }
+            
+            updateMap();
+        });
+    </script>
+</body>
+</html>
